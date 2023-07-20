@@ -17,7 +17,7 @@ RUN curl -L https://downloads.apache.org/hive/hive-standalone-metastore-${METAST
     rm -rf  mysql-connector-java-8.0.19 
 
 RUN cd ${HIVE_HOME}/lib/ && \
-    curl -L --output postgresql-42.4.0.jar https://jdbc.postgresql.org/download/postgresql-42.4.0.jar
+    curl -L --output postgresql-42.4.0.jar https://jdbc.postgresql.org/download/postgresql-42.4.0.jar && \
     ls -alh ${HIVE_HOME}/lib/
 
 COPY scripts/entrypoint.sh /entrypoint.sh
