@@ -1,5 +1,5 @@
 apiVersion: v2
-name: hive-metastore
+name: hive-metastore-dbinit
 description: |-
   Helm chart to deploy [hive-metastore](https://hive.apache.org/).
 type: application

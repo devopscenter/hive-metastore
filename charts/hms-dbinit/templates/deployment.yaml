@@ -54,6 +54,10 @@ spec:
               echo "type: ${METASTORE_TYPE}"
               echo "host: ${METASTORE_DB_HOSTNAME}"
 
+              # replace placeholders in hive-site.xml
+              sed -i 's/CUserPlaceholder/'${CONNECTION_USERNAME}'/g' /opt/hive-configs/hive-site.xml
+              sed -i 's/CPPlaceholder/'${CONNECTION_PASSWORD}'/g' /opt/hive-configs/hive-site.xml
+
               if [ "${METASTORE_TYPE}" = "${MYSQL}" ]; then
                 echo "Waiting for database on ${METASTORE_DB_HOSTNAME} to launch on 3306 ..."
                 while ! nc -z ${METASTORE_DB_HOSTNAME} 3306; do
@@ -61,10 +65,7 @@ spec:
                 done
 
                 echo "Database on ${METASTORE_DB_HOSTNAME}:3306 started"
-                echo "Init apache hive metastore on ${METASTORE_DB_HOSTNAME}:3306"
-
                 /opt/apache-hive-metastore-3.0.0-bin/bin/schematool -initSchema -dbType mysql
-                /opt/apache-hive-metastore-3.0.0-bin/bin/start-metastore
               fi
 
               if [ "${METASTORE_TYPE}" = "${POSTGRES}" ]; then
@@ -74,17 +75,8 @@ spec:
                 done
 
                 echo "Database on ${METASTORE_DB_HOSTNAME}:5432 started"
-                echo "Init apache hive metastore on ${METASTORE_DB_HOSTNAME}:5432"
-                echo "hacky crap that needs to be cleaned up in the container"
-                cd ${HIVE_HOME}/lib
-                curl -L --output postgresql-42.4.0.jar https://jdbc.postgresql.org/download/postgresql-42.4.0.jar
-                cd -
-
                 /opt/apache-hive-metastore-3.0.0-bin/bin/schematool -initSchema -dbType postgres
-                /opt/apache-hive-metastore-3.0.0-bin/bin/start-metastore
               fi
-#            - --service
-#            - metastore
           ports:
             - name: thrift
               containerPort: 9083
@@ -106,9 +98,16 @@ spec:
               value: postgres
             - name: METASTORE_DB_HOSTNAME
               value: "m360-devk-db2-cluster.cluster-cuviup6iq5tv.us-east-2.rds.amazonaws.com"
-#          envFrom:
-#            - configMapRef:
-#                name: {{ include "hive-metastore.fullname" . }}-2
+            - name: CONNECTION_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-hms-secrets
+                  key: username
+            - name: CONNECTION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-hms-secrets
+                  key: password
           volumeMounts:
             - name: hive-configs
               mountPath: /opt/hive-configs

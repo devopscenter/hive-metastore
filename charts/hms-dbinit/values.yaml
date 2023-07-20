@@ -1,7 +1,8 @@
 image:
-  repository: bitsondatadev/hive-metastore
+  repository: 868073499690.dkr.ecr.us-east-2.amazonaws.com/hive-metastore
+
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 service:
   type: ClusterIP
@@ -21,6 +22,9 @@ app:
     METASTORE_TYPE: "postgres"
     METASTORE_DB_HOSTNAME: "m360-devk-db2-cluster.cluster-cuviup6iq5tv.us-east-2.rds.amazonaws.com"
     HIVE_CONF_DIR: "/opt/hive-configs"
+  secrets:
+    username: bTM2MGFwcA==    # base64 encoded username
+    password: d0dyOGNwZzFjRmZK   # base64 encoded password
 
 hiveSiteXml: |
   <configuration>
@@ -55,19 +59,11 @@ hiveSiteXml: |
     </property>
     <property>
         <name>javax.jdo.option.ConnectionUserName</name>
-        <value>m360app</value>
+        <value>CUserPlaceholder</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionPassword</name>
-        <value>wGr8cpg1cFfJ</value>
-    </property>
-    <property>
-        <name>fs.s3a.access.key</name>
-        <value>AKIA4UHJWNQVGJZXT4QU</value>
-    </property>
-    <property>
-        <name>fs.s3a.secret.key</name>
-        <value>bjCJaSdpp6tmvIaT+Zh0APS9TOXhw1lMlzb7N5fS</value>
+        <value>CPPlaceholder</value>
     </property>
     <property>
         <name>fs.s3a.endpoint</name>

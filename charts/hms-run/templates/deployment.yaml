@@ -54,14 +54,9 @@ spec:
               echo "type: ${METASTORE_TYPE}"
               echo "host: ${METASTORE_DB_HOSTNAME}"
 
-              ls -alh /opt/hive-configs/
-              cat /opt/hive-configs/hive-site.xml
-
               # replace placeholders in hive-site.xml
               sed -i 's/CUserPlaceholder/'${CONNECTION_USERNAME}'/g' /opt/hive-configs/hive-site.xml
               sed -i 's/CPPlaceholder/'${CONNECTION_PASSWORD}'/g' /opt/hive-configs/hive-site.xml
-
-              cat /opt/hive-configs/hive-site.xml
 
               if [ "${METASTORE_TYPE}" = "${MYSQL}" ]; then
                 echo "Waiting for database on ${METASTORE_DB_HOSTNAME} to launch on 3306 ..."
@@ -70,9 +65,6 @@ spec:
                 done
 
                 echo "Database on ${METASTORE_DB_HOSTNAME}:3306 started"
-                echo "Init apache hive metastore on ${METASTORE_DB_HOSTNAME}:3306"
-
-
                 /opt/apache-hive-metastore-3.0.0-bin/bin/start-metastore
               fi
 
@@ -83,16 +75,8 @@ spec:
                 done
 
                 echo "Database on ${METASTORE_DB_HOSTNAME}:5432 started"
-                echo "Init apache hive metastore on ${METASTORE_DB_HOSTNAME}:5432"
-                echo "hacky crap that needs to be cleaned up in the container"
-                cd ${HIVE_HOME}/lib
-                curl -L --output postgresql-42.4.0.jar https://jdbc.postgresql.org/download/postgresql-42.4.0.jar
-                cd -
-
                 /opt/apache-hive-metastore-3.0.0-bin/bin/start-metastore
               fi
-#            - --service
-#            - metastore
           ports:
             - name: thrift
               containerPort: 9083

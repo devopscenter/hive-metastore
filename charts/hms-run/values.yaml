@@ -1,7 +1,8 @@
 image:
-  repository: bitsondatadev/hive-metastore
+  repository: 868073499690.dkr.ecr.us-east-2.amazonaws.com/hive-metastore
+
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 service:
   type: ClusterIP
@@ -22,8 +23,8 @@ app:
     METASTORE_DB_HOSTNAME: "m360-devk-db2-cluster.cluster-cuviup6iq5tv.us-east-2.rds.amazonaws.com"
     HIVE_CONF_DIR: "/opt/hive-configs"
   secrets:
-    username: bTM2MGFwcA==    # replace with your base64 encoded username
-    password: d0dyOGNwZzFjRmZK   # replace with your base64 encoded password
+    username: bTM2MGFwcA==    # base64 encoded username
+    password: d0dyOGNwZzFjRmZK   # base64 encoded password
 
 hiveSiteXml: |
   <configuration>
