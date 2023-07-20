@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hive-metastore.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hive-metastore.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "hive-metastore.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "hive-metastore.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      initContainers:
+        - name: {{ include "hive-metastore.fullname" . }}-init
+          image: tempire/alpine-perl:3.14.0
+          command:
+            - "sh"
+          args:
+            - "-c"
+            - cp /tmp/hive-site.xml /opt/hive-configs/ && perl -pi -e 's/\${env:([_A-Z0-9]+)}/$ENV{$1}/g' /opt/hive-configs/hive-site.xml
+          volumeMounts:
+            - name: hive-config-map
+              mountPath: /tmp/hive-site.xml
+              subPath: hive-site.xml
+            - name: hive-configs
+              mountPath: /opt/hive-configs
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - "sh"
+          args:
+            - "-c"
+            - |
+              export HADOOP_HOME=/opt/hadoop-3.2.0
+              export HADOOP_CLASSPATH=${HADOOP_HOME}/share/hadoop/tools/lib/aws-java-sdk-bundle-1.11.375.jar:${HADOOP_HOME}/share/hadoop/tools/lib/hadoop-aws-3.2.0.jar:${HIVE_HOME}/lib/postgresql-42.4.0.jar
+              export CLASSPATH=${HADOOP_CLASSPATH}
+              export JAVA_HOME=/usr/local/openjdk-8
+              export METASTORE_DB_HOSTNAME=${METASTORE_DB_HOSTNAME:-localhost}
+
+              MYSQL='mysql'
+              POSTGRES='postgres'
+
+              echo "type: ${METASTORE_TYPE}"
+              echo "host: ${METASTORE_DB_HOSTNAME}"
+
+              if [ "${METASTORE_TYPE}" = "${MYSQL}" ]; then
+                echo "Waiting for database on ${METASTORE_DB_HOSTNAME} to launch on 3306 ..."
+                while ! nc -z ${METASTORE_DB_HOSTNAME} 3306; do
+                  sleep 1
+                done
+
+                echo "Database on ${METASTORE_DB_HOSTNAME}:3306 started"
+                echo "Init apache hive metastore on ${METASTORE_DB_HOSTNAME}:3306"
+
+                /opt/apache-hive-metastore-3.0.0-bin/bin/schematool -initSchema -dbType mysql
+                /opt/apache-hive-metastore-3.0.0-bin/bin/start-metastore
+              fi
+
+              if [ "${METASTORE_TYPE}" = "${POSTGRES}" ]; then
+                echo "Waiting for database on ${METASTORE_DB_HOSTNAME} to launch on 5432 ..."
+                while ! nc -z ${METASTORE_DB_HOSTNAME} 5432; do
+                  sleep 1
+                done
+
+                echo "Database on ${METASTORE_DB_HOSTNAME}:5432 started"
+                echo "Init apache hive metastore on ${METASTORE_DB_HOSTNAME}:5432"
+                echo "hacky crap that needs to be cleaned up in the container"
+                cd ${HIVE_HOME}/lib
+                curl -L --output postgresql-42.4.0.jar https://jdbc.postgresql.org/download/postgresql-42.4.0.jar
+                cd -
+
+                /opt/apache-hive-metastore-3.0.0-bin/bin/schematool -initSchema -dbType postgres
+                /opt/apache-hive-metastore-3.0.0-bin/bin/start-metastore
+              fi
+#            - --service
+#            - metastore
+          ports:
+            - name: thrift
+              containerPort: 9083
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: thrift
+          readinessProbe:
+            tcpSocket:
+              port: thrift
+          startupProbe:
+            failureThreshold: 60
+            tcpSocket:
+              port: thrift
+          env:
+            - name: HIVE_CONF_DIR
+              value: /opt/hive-configs
+            - name: METASTORE_TYPE
+              value: postgres
+            - name: METASTORE_DB_HOSTNAME
+              value: "m360-devk-db2-cluster.cluster-cuviup6iq5tv.us-east-2.rds.amazonaws.com"
+#          envFrom:
+#            - configMapRef:
+#                name: {{ include "hive-metastore.fullname" . }}-2
+          volumeMounts:
+            - name: hive-configs
+              mountPath: /opt/hive-configs
+      volumes:
+        - name: hive-configs
+          emptyDir: {}
+        - name: hive-config-map
+          configMap:
+            name: {{ include "hive-metastore.fullname" . }}
